@@ -1,0 +1,39 @@
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    container_name: gateway-app
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+
+  chatbot-service:
+    build:
+      context: .
+      dockerfile: services/chatbot_service/Dockerfile
+    container_name: chatbot-service
+    ports:
+      - "9001:9001"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    restart: unless-stopped
+
+  diary-service:
+    build:
+      context: .
+      dockerfile: services/diary_service/Dockerfile
+    container_name: diary-service
+    ports:
+      - "9002:9002"
+    restart: unless-stopped
+
+  crawler-service:
+    build:
+      context: .
+      dockerfile: services/crawler_service/Dockerfile
+    container_name: crawler-service
+    ports:
+      - "9003:9003"
+    restart: unless-stopped
+

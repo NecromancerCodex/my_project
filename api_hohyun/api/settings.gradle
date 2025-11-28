@@ -1,0 +1,5 @@
+rootProject.name = 'api'
+
+include 'gateway'
+include 'services:user-service'
+include 'services:auth-service'

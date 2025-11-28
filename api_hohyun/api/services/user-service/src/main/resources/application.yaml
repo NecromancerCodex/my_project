@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: user-service
+  config:
+    import: "optional:configserver:"
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.cloud.autoconfigure.LifecycleMvcEndpointAutoConfiguration
+      - org.springframework.cloud.autoconfigure.RefreshAutoConfiguration
+  cloud:
+    discovery:
+      enabled: true
+    loadbalancer:
+      enabled: true
+  data:
+    redis:
+      host: redis
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000  # 1시간
+
+server:
+  port: 8081

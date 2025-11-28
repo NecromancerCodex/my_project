@@ -1,0 +1,144 @@
+spring:
+  application:
+    name: gateway
+  config:
+    import: "optional:configserver:"
+  autoconfigure:
+    exclude:
+      - org.springframework.cloud.autoconfigure.LifecycleMvcEndpointAutoConfiguration
+      - org.springframework.cloud.autoconfigure.RefreshAutoConfiguration
+      - org.springframework.boot.actuate.autoconfigure.web.servlet.ServletManagementContextAutoConfiguration
+  data:
+    redis:
+      host: redis
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: user-service
+              uri: http://user-service:8081
+              predicates:
+                - Path=/users/**
+            # 인증 서비스 라우팅 (소셜 로그인: 카카오, 네이버, 구글)
+            # /auth/** 경로는 StripPrefix=1로 /auth를 제거하여 각 컨트롤러로 전달
+            # 예: /auth/kakao/** -> /kakao/**, /auth/naver/** -> /naver/**, /auth/google/** -> /google/**
+            - id: auth-service
+              uri: http://auth-service:8082
+              predicates:
+                - Path=/auth/**
+              filters:
+                - StripPrefix=1
+            # API 경로 라우팅 (소셜 로그인: 카카오, 네이버, 구글)
+            # /api/{provider}/** 경로는 StripPrefix=2로 /api/{provider}를 제거하여 각 컨트롤러로 전달
+            # 예: /api/kakao/login -> /kakao/login, /api/naver/login -> /naver/login
+            - id: api-kakao-service
+              uri: http://auth-service:8082
+              predicates:
+                - Path=/api/kakao/**
+              filters:
+                - RewritePath=/api/kakao/(?<segment>.*), /kakao/$\{segment}
+            - id: api-naver-service
+              uri: http://auth-service:8082
+              predicates:
+                - Path=/api/naver/**
+              filters:
+                - RewritePath=/api/naver/(?<segment>.*), /naver/$\{segment}
+            - id: api-google-service
+              uri: http://auth-service:8082
+              predicates:
+                - Path=/api/google/**
+              filters:
+                - RewritePath=/api/google/(?<segment>.*), /google/$\{segment}
+            # OAuth2 리다이렉트 URI 처리 (provider별 경로)
+            # /oauth2/{provider}/callback 경로를 auth-service의 각 소셜 로그인 컨트롤러로 라우팅
+            # 예: /oauth2/naver/callback -> /naver/callback
+            - id: oauth2-callback-naver-path
+              uri: http://auth-service:8082
+              predicates:
+                - Path=/oauth2/naver/callback
+              filters:
+                - RewritePath=/oauth2/naver/callback, /naver/callback
+            - id: oauth2-callback-google-path
+              uri: http://auth-service:8082
+              predicates:
+                - Path=/oauth2/google/callback
+              filters:
+                - RewritePath=/oauth2/google/callback, /google/callback
+            - id: oauth2-callback-kakao-path
+              uri: http://auth-service:8082
+              predicates:
+                - Path=/oauth2/kakao/callback
+              filters:
+                - RewritePath=/oauth2/kakao/callback, /kakao/callback
+            # OAuth2 표준 리다이렉트 URI 처리 (네이버, 구글 등)
+            # /login/oauth2/code/** 경로를 auth-service의 각 소셜 로그인 컨트롤러로 라우팅
+            # 예: /login/oauth2/code/naver -> auth-service의 /naver/callback
+            - id: oauth2-callback-naver
+              uri: http://auth-service:8082
+              predicates:
+                - Path=/login/oauth2/code/naver
+              filters:
+                - RewritePath=/login/oauth2/code/naver, /naver/callback
+            - id: oauth2-callback-google
+              uri: http://auth-service:8082
+              predicates:
+                - Path=/login/oauth2/code/google
+              filters:
+                - RewritePath=/login/oauth2/code/google, /google/callback
+          discovery:
+            locator:
+              enabled: true
+              lower-case-service-id: true
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowed-origins:
+                  - "https://hohyun.site"
+                  - "http://hohyun.site"
+                  - "http://localhost:3000"
+                  - "http://127.0.0.1:3000"
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - OPTIONS
+                  - PATCH
+                allowed-headers: "*"
+                allow-credentials: true
+                max-age: 3600
+
+server:
+  port: 8080
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /docs
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    use-root-path: false
+  show-actuator: false
+  paths-to-match:
+    - /**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    gateway:
+      access: unrestricted
+
